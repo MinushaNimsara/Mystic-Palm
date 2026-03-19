@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mystic Palm - AI Palmistry</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#050714" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-image" aria-hidden="true"></div>
+    <div class="page">
+      <header class="hero" data-animate="hero">
+        <h1>Mystic Palm</h1>
+        <p class="hero-tagline">Let AI read the hidden stories in your palm.</p>
+      </header>
+
+      <nav class="top-nav" data-animate="nav">
+        <button type="button" class="nav-btn active" data-view="palmistry">Palmistry</button>
+        <button type="button" class="nav-btn" data-view="horoscope">Horoscope</button>
+      </nav>
+
+      <main data-animate="main">
+      <section id="view-palmistry" class="app-view active">
+        <section class="card upload-card">
+          <h2>Palm Scan Portal</h2>
+          <p class="hint">For best results, use your dominant hand, in good lighting, with your palm filling most of the frame.</p>
+
+          <div class="upload-area" id="upload-area">
+            <div class="upload-cta">
+              <button id="file-button" class="primary-btn">Choose Palm Photo</button>
+              <p class="or-text">or drag & drop an image here</p>
+              <input type="file" id="file-input" accept="image/*" hidden />
+            </div>
+            <div class="preview" id="preview" hidden>
+              <img id="preview-image" alt="Your palm preview" />
+            </div>
+          </div>
+
+          <button id="analyze-button" class="primary-btn analyze-btn" disabled>Start AI Reading</button>
+          <p id="status-text" class="status-text"></p>
+        </section>
+
+        <section class="card result-card" id="result-card" hidden>
+          <h2>Your Mystic Reading</h2>
+          <div id="result-content" class="result-content reading-blocks"></div>
+        </section>
+      </section>
+
+      <section id="view-horoscope" class="app-view">
+        <section class="card horoscope-card">
+          <h2>Daily Horoscope</h2>
+          <p class="hint">Enter your birth details and zodiac sign for today's cosmic guidance.</p>
+
+          <form id="horoscope-form" class="horoscope-form" novalidate>
+            <div class="birth-form-grid">
+              <div class="field-group">
+                <label for="birth-date">Date of Birth</label>
+                <input type="date" id="birth-date" class="form-input" required />
+              </div>
+              <div class="field-group">
+                <label for="birth-time">Time of Birth</label>
+                <input type="time" id="birth-time" class="form-input" required />
+              </div>
+              <div class="field-group field-full">
+                <label for="birth-place">Place of Birth</label>
+                <input type="text" id="birth-place" class="form-input" placeholder="City, Country" required />
+              </div>
+              <div class="field-group field-full">
+                <label for="zodiac-select">Zodiac Sign / Lagna</label>
+                <select id="zodiac-select" class="form-input" required>
+                  <option value="">Select your zodiac sign</option>
+                  <option value="aries">Aries</option>
+                  <option value="taurus">Taurus</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="cancer">Cancer</option>
+                  <option value="leo">Leo</option>
+                  <option value="virgo">Virgo</option>
+                  <option value="libra">Libra</option>
+                  <option value="scorpio">Scorpio</option>
+                  <option value="sagittarius">Sagittarius</option>
+                  <option value="capricorn">Capricorn</option>
+                  <option value="aquarius">Aquarius</option>
+                  <option value="pisces">Pisces</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" id="horoscope-button" class="primary-btn horoscope-submit-btn">Check Horoscope</button>
+          </form>
+
+          <p id="horoscope-status" class="status-text"></p>
+          <div id="horoscope-content" class="result-content reading-blocks" hidden></div>
+        </section>
+      </section>
+      </main>
+
+      <footer class="footer">
+        <p>For entertainment and reflection only – follow your own intuition above all.</p>
+      </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>
