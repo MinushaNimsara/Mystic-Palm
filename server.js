@@ -6,8 +6,16 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    gemini: !!(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_2),
+    roboflow: !!process.env.ROBOFLOW_API_KEY
+  });
+});
 
 app.post('/api/detect-lines', async (req, res) => {
   try {
@@ -64,12 +72,12 @@ app.post('/api/analyze-palm', async (req, res) => {
         ? `\n\nExtra context: A computer vision detector produced these palm-line detections:\n${detections}\n`
         : '');
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(Boolean);
+    if (!apiKeys.length) {
       return res.status(500).json({ error: 'Server is not configured with GEMINI_API_KEY.' });
     }
 
-    const model = 'gemini-2.0-flash';
+    const model = 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const body = {
@@ -88,22 +96,31 @@ app.post('/api/analyze-palm', async (req, res) => {
       ]
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(body)
-    });
+    let response;
+    let errorText = '';
+    for (const apiKey of apiKeys) {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify(body)
+      });
+      errorText = await response.text();
+      if (response.ok) break;
+      if (response.status === 429 && apiKeys.indexOf(apiKey) < apiKeys.length - 1) {
+        continue;
+      }
+      break;
+    }
 
     if (!response.ok) {
-      const errorText = await response.text();
       console.error('Gemini API error:', errorText);
       return res.status(500).json({ error: 'AI analysis failed.', details: errorText });
     }
 
-    const data = await response.json();
+    const data = JSON.parse(errorText || '{}');
     const aiText =
       data.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ') ||
       'Unable to interpret the palm image.';
@@ -142,26 +159,35 @@ app.post('/api/horoscope', async (req, res) => {
       (placeMeta?.timezone ? `- Timezone: ${placeMeta.timezone}\n` : '') +
       '\nOutput format: 1) Planetary Context 2) Personality & Core 3) Love & Relationships 4) Career & Finance 5) Health & Energy 6) Today/This Week Guidance. Be insightful, spiritual, and practical.';
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Server is not configured with GEMINI_API_KEY.' });
+    const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(Boolean);
+    if (!apiKeys.length) return res.status(500).json({ error: 'Server is not configured with GEMINI_API_KEY.' });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.9 }
-      })
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+    const reqBody = JSON.stringify({
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: { maxOutputTokens: 800, temperature: 0.9 }
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Gemini horoscope error:', err);
-      return res.status(500).json({ error: 'AI analysis failed.', details: err });
+    let response;
+    let errText = '';
+    for (const apiKey of apiKeys) {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: reqBody
+      });
+      errText = await response.text();
+      if (response.ok) break;
+      if (response.status === 429 && apiKeys.indexOf(apiKey) < apiKeys.length - 1) continue;
+      break;
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+      console.error('Gemini horoscope error:', errText);
+      return res.status(500).json({ error: 'AI analysis failed.', details: errText });
+    }
+
+    const data = JSON.parse(errText || '{}');
     const aiText = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ') || 'Unable to generate horoscope.';
 
     return res.json({

@@ -1,0 +1,5 @@
+# Exclude from Vercel deployment (100MB limit)
+palm hand dataset
+palm hand dataset/
+**/palm hand dataset/**
+node_modules

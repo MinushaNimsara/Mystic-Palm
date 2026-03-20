@@ -133,6 +133,10 @@ uploadArea.addEventListener('drop', (event) => {
   handleFiles(event.dataTransfer.files);
 });
 
+if (analyzeButton) {
+  analyzeButton.addEventListener('click', () => analyzePalm());
+}
+
 async function analyzePalm() {
   if (!selectedFile) {
     setStatus('Please select a palm image first.', 'error');
@@ -193,8 +197,12 @@ async function analyzePalm() {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Server error:', errorData);
-      const errMsg = errorData?.error || errorData?.details || 'The spirits could not be reached. Please try again in a moment.';
-      setStatus(typeof errMsg === 'string' && errMsg.length < 150 ? errMsg : 'Server error. Check API keys in Vercel.', 'error');
+      let errMsg = errorData?.error || errorData?.details || 'The spirits could not be reached. Please try again in a moment.';
+      if (errorData?.details && errorData?.error && errorData.error !== errorData.details) {
+        const short = String(errorData.details).slice(0, 120);
+        errMsg = `${errorData.error} ${short}${short.length >= 120 ? '…' : ''}`;
+      }
+      setStatus(typeof errMsg === 'string' && errMsg.length < 200 ? errMsg : 'Server error. Check API keys in Vercel.', 'error');
       return;
     }
 
@@ -238,7 +246,7 @@ async function analyzePalm() {
   }
 }
 
-function compressImageForUpload(file, maxSize = 1024, quality = 0.8) {
+function compressImageForUpload(file, maxSize = 800, quality = 0.7) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
