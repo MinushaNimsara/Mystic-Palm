@@ -144,17 +144,8 @@ async function analyzePalm() {
     setStatus('Consulting the stars and lines in your palm...', '');
     statusText?.classList.add('loading');
 
-    // Convert file to base64 (without the data URL prefix)
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result;
-        const commaIndex = result.indexOf(',');
-        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(selectedFile);
-    });
+    // Compress image to stay under Vercel's 4.5MB request limit
+    const base64 = await compressImageForUpload(selectedFile);
 
     // 1) Detect lines with Roboflow (best-effort)
     let detectionSummary = '';
@@ -194,7 +185,7 @@ async function analyzePalm() {
       },
       body: JSON.stringify({
         imageBase64: base64,
-        mimeType: selectedFile.type,
+        mimeType: 'image/jpeg',
         detections: detectionSummary
       })
     });
@@ -202,7 +193,8 @@ async function analyzePalm() {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Server error:', errorData);
-      setStatus('The spirits could not be reached. Please try again in a moment.', 'error');
+      const errMsg = errorData?.error || errorData?.details || 'The spirits could not be reached. Please try again in a moment.';
+      setStatus(typeof errMsg === 'string' && errMsg.length < 150 ? errMsg : 'Server error. Check API keys in Vercel.', 'error');
       return;
     }
 
@@ -246,7 +238,56 @@ async function analyzePalm() {
   }
 }
 
-analyzeButton.addEventListener('click', analyzePalm);
+function compressImageForUpload(file, maxSize = 1024, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            const commaIndex = result.indexOf(',');
+            resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const commaIndex = result.indexOf(',');
+        resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
+  });
+}
 
 navButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
