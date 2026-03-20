@@ -66,7 +66,8 @@ app.post('/api/analyze-palm', async (req, res) => {
     }
 
     const promptText =
-      'You are an expert palm reader. Analyze the provided palm image and describe the Life Line, Heart Line, and Head Line. ' +
+      'You are an expert palm reader. IMPORTANT: If the image does NOT show a clear human palm (e.g. it is a poster, logo, face, or other non-palm image), respond with ONLY this exact text: [PALM_NOT_DETECTED]\n\n' +
+      'Otherwise, analyze the palm image and describe the Life Line, Heart Line, and Head Line. ' +
       'Give a mystical but positive palm reading in 3–5 short sections with headings: Life Line, Heart Line, Head Line, and Overall Insight.' +
       (detections
         ? `\n\nExtra context: A computer vision detector produced these palm-line detections:\n${detections}\n`
@@ -122,8 +123,12 @@ app.post('/api/analyze-palm', async (req, res) => {
 
     const data = JSON.parse(errorText || '{}');
     const aiText =
-      data.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ') ||
+      data.candidates?.[0]?.content?.parts?.map((p) => p.text).join(' ').trim() ||
       'Unable to interpret the palm image.';
+
+    if (aiText.includes('[PALM_NOT_DETECTED]') || /not a palm|cannot perform.*palm|does not show.*palm|not a hand|misunderstanding|promotional|poster|flyer|graphic.*not.*palm/i.test(aiText)) {
+      return res.status(400).json({ error: 'Please upload a clear photo of your palm. This image does not appear to be a palm.' });
+    }
 
     return res.json({ result: aiText });
   } catch (error) {
