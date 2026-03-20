@@ -192,4 +192,8 @@ function startServer(port) {
   });
 }
 
-startServer(PORT);
+if (process.env.VERCEL !== '1') {
+  startServer(PORT);
+}
+
+module.exports = app;
